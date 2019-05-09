@@ -28,4 +28,4 @@ p_1 p_2 ... p_N
 
 ## tips
 - 全然テストをしていないのでバグ報告大歓迎です．
-- kmyk さんの longcontest visualizer framework を参考にさせていただきました．
+- kmyk さんの [longcontest visualizer framework](https://github.com/kmyk/longcontest-visualizer-framework) を参考にさせていただきました．
