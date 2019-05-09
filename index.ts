@@ -204,7 +204,7 @@ module framework {
         const reader = new FileReader();
         reader.readAsText(file);
         reader.onloadend = function () {
-            callback(reader.result);
+            callback(reader.result as string);
         }
     };
 
@@ -248,270 +248,170 @@ module framework {
 
 module visualizer {
     class InputFile {
-        public taxis: [number, number][];
-        public passengers: [number, number][];
-        public zones: [number, number][];
-        public passengersDict: any;
-        public zonesDict: any;
+        public points: { x: number, y: number }[];
 
         constructor(content: string) {
             const parser = new framework.FileParser('<input-file>', content);
 
             // parse
-            const t = parser.getInt();
+            const N = parser.getInt();
             parser.getNewline();
-            this.taxis = [];
-            for (let i = 0; i < t; ++ i) {
+            if (N < 3) alert("<tester>: number of points is so small");
+            this.points = [];
+            for (let i = 0; i < N; ++ i) {
                 const x = parser.getInt();
                 const y = parser.getInt();
                 parser.getNewline();
-                this.taxis.push([ x, y ]);
-            }
-
-            // parse
-            const p = parser.getInt();
-            parser.getNewline();
-            this.passengers = [];
-            this.passengersDict = {};
-            for (let i = 0; i < p; ++ i) {
-                const x = parser.getInt();
-                const y = parser.getInt();
-                parser.getNewline();
-                this.passengers.push([ x, y ]);
-                this.passengersDict[[ x, y ].toString()] = i;
-            }
-
-            // parse
-            const z = parser.getInt();
-            parser.getNewline();
-            this.zones = [];
-            this.zonesDict = {};
-            for (let i = 0; i < z; ++ i) {
-                const x = parser.getInt();
-                const y = parser.getInt();
-                parser.getNewline();
-                this.zones.push([ x, y ]);
-                this.zonesDict[[ x, y ].toString()] = i;
+                this.points.push({ x, y });
             }
         }
     };
 
     class OutputFile {
-        public commands: [number, number, number[]][];
+        public order: number[];
 
-        constructor(content: string) {
+        constructor(inputContent: string, content: string) {
+            const inputParser = new framework.FileParser('<input-file>', inputContent);
             const parser = new framework.FileParser('<output-file>', content);
 
             // parse
-            const k = parser.getInt();
+            const N = inputParser.getInt();
+            this.order = [];
+            let visited: boolean[] = new Array(N);
+            for (let i = 0; i < N; ++ i) {
+                const p = parser.getInt();
+
+                if (p < 0 || p >= N) alert("<tester>: index out of range");
+                if (visited[p]) alert("<tester>: reached the same vertex twice");
+
+                this.order.push(p);
+                visited[p] = true;
+            }
             parser.getNewline();
-            this.commands = [];
-            for (let i = 0; i < k; ++ i) {
-                const command = parser.getWord();
-                if (command != "MOVE") {
-                    parser.reportError("\"MOVE\" expected");
-                }
-                const x = parser.getInt();
-                const y = parser.getInt();
-                const t = parser.getInt();
-                const targets = [];
-                for (let j = 0; j < t; ++ j) {
-                    const target = parser.getInt();
-                    targets.push(target);
-                }
-                parser.getNewline();
-                this.commands.push([ x, y, targets ]);
-            }
-        }
-    };
-
-    class TesterFrame {
-        public input: InputFile;
-        public previousFrame: TesterFrame | null;
-        public taxis: { x: number, y: number, carrying: boolean }[];
-        public passengers: { carried: boolean }[];
-        public age: number;
-        public command: [ number, number, number[] ] | null;
-        public penaltyDelta: number | null;
-        public penaltySum: number;
-
-        constructor(input: InputFile);
-        constructor(frame: TesterFrame, command: [number, number, number[]]);
-        constructor(something1: any, something2?: any) {
-
-            if (something1 instanceof InputFile) {  // initial frame
-                this.input = something1 as InputFile;
-                this.previousFrame = null;
-                this.age = 0;
-                this.command = null;
-
-                this.taxis = [];
-                for (const taxi of this.input.taxis) {
-                    this.taxis.push({ x: taxi[0], y: taxi[1], carrying: false });
-                }
-                this.passengers = [];
-                for (let i = 0; i < this.input.passengers.length; ++ i) {
-                    this.passengers.push({ carried: false });
-                }
-                this.penaltyDelta = null;
-                this.penaltySum = 0;
-
-            } else if (something1 instanceof TesterFrame) {  // successor frame
-                this.previousFrame = something1 as TesterFrame;
-                this.command = something2 as [number, number, number[]];
-                this.input = this.previousFrame.input;
-                this.age = this.previousFrame.age + 1;
-
-                // apply the command
-                this.taxis = JSON.parse(JSON.stringify(this.previousFrame.taxis));  // deep copy
-                this.passengers = JSON.parse(JSON.stringify(this.previousFrame.passengers));  // deep copy
-                const dx = this.command[0];
-                const dy = this.command[1];
-                for (let i of this.command[2]) {
-                    i -= 1;
-                    if (i < 0 || this.taxis.length <= i) alert("<tester>: index out of range");
-                    this.taxis[i].x += dx;
-                    this.taxis[i].y += dy;
-                    const key = [ this.taxis[i].x, this.taxis[i].y ].toString();
-                    if (this.taxis[i].carrying) {
-                        const j = this.input.zonesDict[key];
-                        if (j !== undefined) {
-                            this.taxis[i].carrying = false;
-                        }
-                    } else {
-                        const j = this.input.passengersDict[key];
-                        if (j !== undefined && ! this.passengers[j].carried) {
-                            this.taxis[i].carrying = true;
-                            this.passengers[j].carried = true;
-                        }
-                    }
-                }
-                this.penaltyDelta = Math.sqrt(dx * dx + dy * dy) * (1 + this.command[2].length / this.taxis.length);
-                this.penaltySum = this.previousFrame.penaltySum + this.penaltyDelta;
-            }
-        }
-    };
-
-    class Tester {
-        public frames: TesterFrame[];
-        constructor(inputContent: string, outputContent: string) {
-            const input  = new  InputFile( inputContent);
-            const output = new OutputFile(outputContent);
-            this.frames = [ new TesterFrame(input) ];
-            for (const command of output.commands) {
-                let lastFrame = this.frames[this.frames.length - 1];
-                this.frames.push( new TesterFrame(lastFrame, command) );
-            }
         }
     };
 
     class Visualizer {
         private canvas: HTMLCanvasElement;
         private ctx: CanvasRenderingContext2D;
-        private xInput: HTMLInputElement;
-        private yInput: HTMLInputElement;
-        private taxisInput: HTMLInputElement;
+        private visitingInput: HTMLInputElement;
         private penaltyDeltaInput: HTMLInputElement;
         private penaltySumInput: HTMLInputElement;
+        private transformX: (x: number) => number;
+        private transformY: (y: number) => number;
+        private pointSize: number;
+        private pointSize2: number;
+
+        public N: number;
+        private idx: number;
+        private order: number[];
+        private points: { x: number, y: number }[];
+        private penaltyDelta: number | null;
+        private penaltySum: number;
 
         constructor() {
             this.canvas = <HTMLCanvasElement> document.getElementById("canvas");  // TODO: IDs should be given as arguments
-            const size = 800;
-            this.canvas.height = size;  // pixels
-            this.canvas.width  = size;  // pixels
+            this.canvas.height = 800;  // pixels
+            this.canvas.width  = 800;  // pixels
             this.ctx = this.canvas.getContext('2d');
             if (this.ctx == null) {
                 alert('unsupported browser');
             }
-            this.xInput = <HTMLInputElement> document.getElementById("xInput");
-            this.yInput = <HTMLInputElement> document.getElementById("yInput");
-            this.taxisInput = <HTMLInputElement> document.getElementById("taxisInput");
+            this.visitingInput = <HTMLInputElement> document.getElementById("visitingInput");
             this.penaltyDeltaInput = <HTMLInputElement> document.getElementById("penaltyDeltaInput");
             this.penaltySumInput = <HTMLInputElement> document.getElementById("penaltySumInput");
         }
 
-        public draw(frame: TesterFrame) {
-            // update input tags
-            if (frame.age == 0) {
-                this.xInput.value = "";
-                this.yInput.value = "";
-                this.taxisInput.value = "";
-                this.penaltyDeltaInput.value = "";
-                this.penaltySumInput.value = "0";
-            } else {
-                this.xInput.value = frame.command[0].toString();
-                this.yInput.value = frame.command[1].toString();
-                this.taxisInput.value = frame.command[2].toString();
-                this.penaltyDeltaInput.value = frame.penaltyDelta.toString();
-                this.penaltySumInput.value = frame.penaltySum.toString();
-            }
+        public init(input: InputFile, output: OutputFile) {
+            this.points = input.points;
+            this.order = output.order;
+            this.N = this.order.length;
 
-            // prepare from input
-            let minX = 0;
-            let maxX = 0;
-            let minY = 0;
-            let maxY = 0;
+
+            let minX = 100000000;
+            let maxX = -100000000;
+            let minY = 100000000;
+            let maxY = -100000000;
             const updateMinMaxXY = (x: number, y: number) => {
                 minX = Math.min(minX, x);
                 maxX = Math.max(maxX, x);
                 minY = Math.min(minY, y);
                 maxY = Math.max(maxY, y);
             };
-            for (const taxi of frame.input.taxis) {
-                updateMinMaxXY(taxi[0], taxi[1]);
+            for (const point of this.points) {
+                updateMinMaxXY(point.x, point.y);
             }
-            for (const passenger of frame.input.passengers) {
-                updateMinMaxXY(passenger[0], passenger[1]);
-            }
-            for (const zone of frame.input.zones) {
-                updateMinMaxXY(zone[0], zone[1]);
-            }
-            const size = Math.max(maxX - minX, maxY - minY) * 1.2;
-            const offset = - (Math.min(0, minX, minY)) * 1.2;
-            const scale = this.canvas.height / size;  // height == width
-            const transform = (z: number) => {
-                return Math.floor((z + offset) * scale);
+            const size = Math.max(maxX - minX, maxY - minY);
+            const centerX = (maxX + minX) / 2;
+            const centerY = (maxY + minY) / 2;
+            const scale = (this.canvas.height - 50) / size;  // height == width
+            this.pointSize = Math.max(1, Math.min(100, Math.floor(10 * scale)));
+            this.pointSize2 = Math.floor(this.pointSize / 2);
+            this.transformX = (x: number) => {
+                return Math.floor((x - centerX) * scale + this.canvas.width / 2);
             };
+            this.transformY = (y: number) => {
+                return Math.floor((y - centerY) * scale + this.canvas.height / 2);
+            };
+
+            this.reInit();
+        }
+
+        public reInit() {
             const drawPixel = (x: number, y: number) => {
-                this.ctx.fillRect(transform(x), transform(y), 5, 5);
+                this.ctx.fillRect(this.transformX(x), this.transformY(y), this.pointSize, this.pointSize);
             };
 
-            // update the canvas
-            const height = this.canvas.height;
-            const width = this.canvas.width;
+            this.idx = -1;
+            this.penaltyDelta = null;
+            this.penaltySum = 0;
             this.ctx.fillStyle = 'white';
-            this.ctx.fillRect(0, 0, width, height);
-
-            // draw entities
-            this.ctx.fillStyle = 'green';
-            for (let i = 0; i < frame.input.passengers.length; ++ i) {
-                const passenger = frame.input.passengers[i];
-                const carried = frame.passengers[i].carried;
-                if (carried) continue;
-                drawPixel(passenger[0], passenger[1]);
+            this.ctx.fillRect(0, 0, this.canvas.height, this.canvas.height);
+            this.ctx.fillStyle = 'black';
+            for (const point of this.points) {
+                drawPixel(point.x, point.y);
             }
+        }
+
+        public drawNext() {
+            // update
+            ++this.idx;
+            const cur = this.points[this.order[this.idx % this.N]];
+            const prv = this.idx > 0 ? this.points[this.order[this.idx - 1]] : null;
+            if (prv != null) {
+                const dx = cur.x - prv.x;
+                const dy = cur.y - prv.y;
+                this.penaltyDelta = Math.sqrt(dx * dx + dy * dy);
+                this.penaltySum += this.penaltyDelta;
+            }
+
+            this.visitingInput.value = this.order[this.idx % this.N].toString();
+            this.penaltyDeltaInput.value = this.penaltyDelta == null ? "" : this.penaltyDelta.toString();
+            this.penaltySumInput.value = this.penaltySum.toString();
+
+            const drawPixel = (x: number, y: number) => {
+                this.ctx.fillRect(this.transformX(x), this.transformY(y), this.pointSize, this.pointSize);
+            };
+
+            // fill current point
             this.ctx.fillStyle = 'red';
-            for (const taxi of frame.taxis) {
-                drawPixel(taxi.x, taxi.y);
-            }
-            this.ctx.fillStyle = 'blue';
-            for (const zone of frame.input.zones) {
-                drawPixel(zone[0], zone[1]);
-            }
+            drawPixel(cur.x, cur.y);
 
-            // draw lines
-            this.ctx.strokeStyle = 'black';
-            this.ctx.lineWidth = 1;
-            if (frame.age != 0) {
-                for (let i = 0; i < frame.input.taxis.length; ++ i) {
-                    const cur = frame.taxis[i];
-                    const prv = frame.previousFrame.taxis[i];
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(transform(prv.x) + 2, transform(prv.y) + 2);
-                    this.ctx.lineTo(transform(cur.x) + 2, transform(cur.y) + 2);
-                    this.ctx.stroke();
-                }
+            // draw line
+            if (prv != null) {
+                this.ctx.strokeStyle = 'blue';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.transformX(prv.x) + this.pointSize2, this.transformY(prv.y) + this.pointSize2);
+                this.ctx.lineTo(this.transformX(cur.x) + this.pointSize2, this.transformY(cur.y) + this.pointSize2);
+                this.ctx.stroke();
+                this.ctx.fillStyle = 'gray';
+                drawPixel(prv.x, prv.y);
             }
+        }
+        public draw(value: number) {
+            if (this.idx > value) this.reInit();
+            while (this.idx < value) this.drawNext();
         }
 
         public getCanvas(): HTMLCanvasElement {
@@ -521,10 +421,11 @@ module visualizer {
 
     export class App {
         public visualizer: Visualizer;
-        public tester: Tester;
         public loader: framework.FileSelector;
         public seek: framework.RichSeekBar;
         public exporter: framework.FileExporter;
+        private input: InputFile;
+        private output: OutputFile;
 
         constructor() {
             this.visualizer = new Visualizer();
@@ -533,14 +434,14 @@ module visualizer {
             this.exporter = new framework.FileExporter(this.visualizer.getCanvas(), this.seek);
 
             this.seek.callback = (value: number) => {
-                if (this.tester !== undefined) {
-                    this.visualizer.draw(this.tester.frames[value]);
-                }
+                this.visualizer.draw(value);
             };
 
             this.loader.callback = (inputContent: string, outputContent: string) => {
-                this.tester = new Tester(inputContent, outputContent);
-                this.seek.setMinMax(0, this.tester.frames.length - 1);
+                this.input = new InputFile(inputContent);
+                this.output = new OutputFile(inputContent, outputContent);
+                this.visualizer.init(this.input, this.output);
+                this.seek.setMinMax(0, this.visualizer.N);
                 this.seek.setValue(0);
                 this.seek.play();
             }
