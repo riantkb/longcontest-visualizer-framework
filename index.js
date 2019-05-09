@@ -297,8 +297,8 @@ var visualizer;
             var size = Math.max(maxX - minX, maxY - minY);
             var centerX = (maxX + minX) / 2;
             var centerY = (maxY + minY) / 2;
-            var scale = (this.canvas.height - 50) / size; // height == width
-            this.pointSize = Math.max(1, Math.min(100, Math.floor(10 * scale)));
+            var scale = (this.canvas.height - 80) / size; // height == width
+            this.pointSize = Math.max(1, Math.min(50, Math.floor(10 * scale)));
             this.pointSize2 = Math.floor(this.pointSize / 2);
             this.transformX = function (x) {
                 return Math.floor((x - centerX) * scale + _this.canvas.width / 2);
@@ -311,7 +311,7 @@ var visualizer;
         Visualizer.prototype.reInit = function () {
             var _this = this;
             var drawPixel = function (x, y) {
-                _this.ctx.fillRect(_this.transformX(x), _this.transformY(y), _this.pointSize, _this.pointSize);
+                _this.ctx.fillRect(_this.transformX(x) - _this.pointSize2, _this.transformY(y) - _this.pointSize2, _this.pointSize, _this.pointSize);
             };
             this.idx = -1;
             this.penaltyDelta = null;
@@ -340,7 +340,7 @@ var visualizer;
             this.penaltyDeltaInput.value = this.penaltyDelta == null ? "" : this.penaltyDelta.toString();
             this.penaltySumInput.value = this.penaltySum.toString();
             var drawPixel = function (x, y) {
-                _this.ctx.fillRect(_this.transformX(x), _this.transformY(y), _this.pointSize, _this.pointSize);
+                _this.ctx.fillRect(_this.transformX(x) - _this.pointSize2, _this.transformY(y) - _this.pointSize2, _this.pointSize, _this.pointSize);
             };
             // fill current point
             this.ctx.fillStyle = 'red';
@@ -350,8 +350,8 @@ var visualizer;
                 this.ctx.strokeStyle = 'blue';
                 this.ctx.lineWidth = 1;
                 this.ctx.beginPath();
-                this.ctx.moveTo(this.transformX(prv.x) + this.pointSize2, this.transformY(prv.y) + this.pointSize2);
-                this.ctx.lineTo(this.transformX(cur.x) + this.pointSize2, this.transformY(cur.y) + this.pointSize2);
+                this.ctx.moveTo(this.transformX(prv.x), this.transformY(prv.y));
+                this.ctx.lineTo(this.transformX(cur.x), this.transformY(cur.y));
                 this.ctx.stroke();
                 this.ctx.fillStyle = 'gray';
                 drawPixel(prv.x, prv.y);
