@@ -36,6 +36,13 @@ module framework {
             }
             return parseInt(word);
         }
+        public getFloat(): number {
+            const word = this.getWord();
+            if (! word.match(new RegExp('^[-+]?[0-9]+(?:\.[0-9]+)?$'))) {
+                this.reportError(`a number expected, but word ${JSON.stringify(this.content[this.y][this.x])}`);
+            }
+            return parseFloat(word);
+        }
         public getNewline() {
             if (this.content.length <= this.y) {
                 this.reportError('newline expected, but EOF');
@@ -259,8 +266,8 @@ module visualizer {
             if (N < 3) alert("<tester>: number of points is so small");
             this.points = [];
             for (let i = 0; i < N; ++ i) {
-                const x = parser.getInt();
-                const y = parser.getInt();
+                const x = parser.getFloat();
+                const y = parser.getFloat();
                 parser.getNewline();
                 this.points.push({ x, y });
             }
@@ -327,11 +334,10 @@ module visualizer {
             this.order = output.order;
             this.N = this.order.length;
 
-
-            let minX = 100000000;
-            let maxX = -100000000;
-            let minY = 100000000;
-            let maxY = -100000000;
+            let minX = 1000000;
+            let maxX = -1000000;
+            let minY = 1000000;
+            let maxY = -1000000;
             const updateMinMaxXY = (x: number, y: number) => {
                 minX = Math.min(minX, x);
                 maxX = Math.max(maxX, x);
@@ -344,14 +350,14 @@ module visualizer {
             const size = Math.max(maxX - minX, maxY - minY);
             const centerX = (maxX + minX) / 2;
             const centerY = (maxY + minY) / 2;
-            const scale = (this.canvas.height - 80) / size;  // height == width
-            this.pointSize = Math.max(1, Math.min(50, Math.floor(10 * scale)));
+            const scale = (this.canvas.height - 50) / size;  // height == width
+            this.pointSize = Math.max(1, Math.min(40, Math.round(120 / Math.sqrt(this.N))));
             this.pointSize2 = Math.floor(this.pointSize / 2);
             this.transformX = (x: number) => {
-                return Math.floor((x - centerX) * scale + this.canvas.width / 2);
+                return Math.round((x - centerX) * scale + this.canvas.width / 2);
             };
             this.transformY = (y: number) => {
-                return Math.floor((y - centerY) * scale + this.canvas.height / 2);
+                return Math.round(-(y - centerY) * scale + this.canvas.height / 2);
             };
 
             this.reInit();
@@ -381,7 +387,7 @@ module visualizer {
             if (prv != null) {
                 const dx = cur.x - prv.x;
                 const dy = cur.y - prv.y;
-                this.penaltyDelta = Math.sqrt(dx * dx + dy * dy);
+                this.penaltyDelta = Math.round(Math.sqrt(dx * dx + dy * dy) + 1e-9);
                 this.penaltySum += this.penaltyDelta;
             }
 

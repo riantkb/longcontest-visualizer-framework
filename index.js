@@ -30,6 +30,13 @@ var framework;
             }
             return parseInt(word);
         };
+        FileParser.prototype.getFloat = function () {
+            var word = this.getWord();
+            if (!word.match(new RegExp('^[-+]?[0-9]+(?:\.[0-9]+)?$'))) {
+                this.reportError("a number expected, but word " + JSON.stringify(this.content[this.y][this.x]));
+            }
+            return parseFloat(word);
+        };
         FileParser.prototype.getNewline = function () {
             if (this.content.length <= this.y) {
                 this.reportError('newline expected, but EOF');
@@ -231,8 +238,8 @@ var visualizer;
                 alert("<tester>: number of points is so small");
             this.points = [];
             for (var i = 0; i < N; ++i) {
-                var x = parser.getInt();
-                var y = parser.getInt();
+                var x = parser.getFloat();
+                var y = parser.getFloat();
                 parser.getNewline();
                 this.points.push({ x: x, y: y });
             }
@@ -280,10 +287,10 @@ var visualizer;
             this.points = input.points;
             this.order = output.order;
             this.N = this.order.length;
-            var minX = 100000000;
-            var maxX = -100000000;
-            var minY = 100000000;
-            var maxY = -100000000;
+            var minX = 1000000;
+            var maxX = -1000000;
+            var minY = 1000000;
+            var maxY = -1000000;
             var updateMinMaxXY = function (x, y) {
                 minX = Math.min(minX, x);
                 maxX = Math.max(maxX, x);
@@ -297,14 +304,14 @@ var visualizer;
             var size = Math.max(maxX - minX, maxY - minY);
             var centerX = (maxX + minX) / 2;
             var centerY = (maxY + minY) / 2;
-            var scale = (this.canvas.height - 80) / size; // height == width
-            this.pointSize = Math.max(1, Math.min(50, Math.floor(10 * scale)));
+            var scale = (this.canvas.height - 50) / size; // height == width
+            this.pointSize = Math.max(1, Math.min(40, Math.round(120 / Math.sqrt(this.N))));
             this.pointSize2 = Math.floor(this.pointSize / 2);
             this.transformX = function (x) {
-                return Math.floor((x - centerX) * scale + _this.canvas.width / 2);
+                return Math.round((x - centerX) * scale + _this.canvas.width / 2);
             };
             this.transformY = function (y) {
-                return Math.floor((y - centerY) * scale + _this.canvas.height / 2);
+                return Math.round(-(y - centerY) * scale + _this.canvas.height / 2);
             };
             this.reInit();
         };
@@ -333,7 +340,7 @@ var visualizer;
             if (prv != null) {
                 var dx = cur.x - prv.x;
                 var dy = cur.y - prv.y;
-                this.penaltyDelta = Math.sqrt(dx * dx + dy * dy);
+                this.penaltyDelta = Math.round(Math.sqrt(dx * dx + dy * dy) + 1e-9);
                 this.penaltySum += this.penaltyDelta;
             }
             this.visitingInput.value = this.order[this.idx % this.N].toString();
