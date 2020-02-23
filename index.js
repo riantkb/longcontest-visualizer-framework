@@ -360,6 +360,7 @@ var visualizer;
                 this.ctx.moveTo(this.transformX(prv.x), this.transformY(prv.y));
                 this.ctx.lineTo(this.transformX(cur.x), this.transformY(cur.y));
                 this.ctx.stroke();
+                this.drawArrow(prv, cur);
                 this.ctx.fillStyle = 'gray';
                 drawPixel(prv.x, prv.y);
             }
@@ -369,6 +370,26 @@ var visualizer;
                 this.reInit();
             while (this.idx < value)
                 this.drawNext();
+        };
+        Visualizer.prototype.drawArrow = function (prv, cur) {
+            var _this = this;
+            var dx = cur.x - prv.x;
+            var dy = cur.y - prv.y;
+            var mag = Math.sqrt(dx * dx + dy * dy);
+            var vx = dx / mag;
+            var vy = -dy / mag;
+            var sx = this.transformX(cur.x) - vx * this.pointSize2;
+            var sy = this.transformY(cur.y) - vy * this.pointSize2;
+            var drawLine = function (angle) {
+                var px = (vx * Math.cos(angle) - vy * Math.sin(angle)) * _this.pointSize;
+                var py = (vx * Math.sin(angle) + vy * Math.cos(angle)) * _this.pointSize;
+                _this.ctx.beginPath();
+                _this.ctx.moveTo(sx, sy);
+                _this.ctx.lineTo(sx + px, sy + py);
+                _this.ctx.stroke();
+            };
+            drawLine(Math.PI * 6 / 7);
+            drawLine(Math.PI * 8 / 7);
         };
         Visualizer.prototype.getCanvas = function () {
             return this.canvas;
