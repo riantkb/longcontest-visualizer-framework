@@ -254,8 +254,13 @@ module framework {
 }
 
 module visualizer {
+    interface Point {
+        x: number;
+        y: number;
+    }
+
     class InputFile {
-        public points: { x: number, y: number }[];
+        public points: Point[];
 
         constructor(content: string) {
             const parser = new framework.FileParser('<input-file>', content);
@@ -312,7 +317,7 @@ module visualizer {
         public N: number;
         private idx: number;
         private order: number[];
-        private points: { x: number, y: number }[];
+        private points: Point[];
         private penaltyDelta: number | null;
         private penaltySum: number;
 
@@ -411,6 +416,7 @@ module visualizer {
                 this.ctx.moveTo(this.transformX(prv.x), this.transformY(prv.y));
                 this.ctx.lineTo(this.transformX(cur.x), this.transformY(cur.y));
                 this.ctx.stroke();
+                this.drawArrow(prv, cur);
                 this.ctx.fillStyle = 'gray';
                 drawPixel(prv.x, prv.y);
             }
@@ -418,6 +424,26 @@ module visualizer {
         public draw(value: number) {
             if (this.idx > value) this.reInit();
             while (this.idx < value) this.drawNext();
+        }
+
+        public drawArrow(prv: Point, cur: Point) {
+            const dx = cur.x - prv.x;
+            const dy = cur.y - prv.y;
+            const mag = Math.sqrt(dx * dx + dy * dy);
+            const vx = dx / mag;
+            const vy = -dy / mag;
+            const sx = this.transformX(cur.x) - vx * this.pointSize2;
+            const sy = this.transformY(cur.y) - vy * this.pointSize2;
+            const drawLine = (angle: number) => {
+                const px = (vx * Math.cos(angle) - vy * Math.sin(angle)) * this.pointSize;
+                const py = (vx * Math.sin(angle) + vy * Math.cos(angle)) * this.pointSize;
+                this.ctx.beginPath();
+                this.ctx.moveTo(sx, sy);
+                this.ctx.lineTo(sx + px, sy + py);
+                this.ctx.stroke();
+            };
+            drawLine(Math.PI * 6 / 7);
+            drawLine(Math.PI * 8 / 7);
         }
 
         public getCanvas(): HTMLCanvasElement {
