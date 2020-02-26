@@ -305,7 +305,7 @@ var visualizer;
             var centerX = (maxX + minX) / 2;
             var centerY = (maxY + minY) / 2;
             var scale = (this.canvas.height - 50) / size; // height == width
-            this.pointSize = Math.max(1, Math.min(40, Math.round(120 / Math.sqrt(this.N))));
+            this.pointSize = Math.max(1, Math.min(20, Math.round(120 / Math.sqrt(this.N))));
             this.pointSize2 = Math.floor(this.pointSize / 2);
             this.transformX = function (x) {
                 return Math.round((x - centerX) * scale + _this.canvas.width / 2);
@@ -356,10 +356,6 @@ var visualizer;
             if (prv != null) {
                 this.ctx.strokeStyle = 'blue';
                 this.ctx.lineWidth = 1;
-                this.ctx.beginPath();
-                this.ctx.moveTo(this.transformX(prv.x), this.transformY(prv.y));
-                this.ctx.lineTo(this.transformX(cur.x), this.transformY(cur.y));
-                this.ctx.stroke();
                 this.drawArrow(prv, cur);
                 this.ctx.fillStyle = 'gray';
                 drawPixel(prv.x, prv.y);
@@ -380,6 +376,10 @@ var visualizer;
             var vy = -dy / mag;
             var sx = this.transformX(cur.x) - vx * this.pointSize2;
             var sy = this.transformY(cur.y) - vy * this.pointSize2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.transformX(prv.x), this.transformY(prv.y));
+            this.ctx.lineTo(sx, sy);
+            this.ctx.stroke();
             var drawLine = function (angle) {
                 var px = (vx * Math.cos(angle) - vy * Math.sin(angle)) * _this.pointSize;
                 var py = (vx * Math.sin(angle) + vy * Math.cos(angle)) * _this.pointSize;
